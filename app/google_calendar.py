@@ -37,6 +37,15 @@ class GoogleCalendarService:
 
         return created_events
 
+    def get_status(self) -> tuple[bool, str]:
+        if os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"):
+            return True, "Google Calendar configurado con Service Account."
+        if os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE") and Path(os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")).exists():
+            return True, "Google Calendar configurado con archivo de Service Account."
+        if self.credentials_path.exists():
+            return True, "Google Calendar listo para autenticacion OAuth."
+        return False, "Falta configurar Google Calendar. Agrega credentials.json o una Service Account."
+
     def _build_service(self):
         service_account_creds = self._load_service_account_credentials()
         if service_account_creds:

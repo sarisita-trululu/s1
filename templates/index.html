@@ -25,6 +25,7 @@
     </section>
 
     <section class="panel">
+      <div class="message {% if can_sync_calendar %}success{% else %}error{% endif %}">{{ calendar_status }}</div>
       <form action="/analyze" method="post" enctype="multipart/form-data" class="upload-form">
         <label for="file" class="input-label">Selecciona tu archivo académico</label>
         <input id="file" name="file" type="file" accept=".pdf,.docx" required>
@@ -85,7 +86,7 @@
               </article>
             {% endfor %}
           </div>
-          <button type="submit" class="sync-button">Sincronizar con Google Calendar</button>
+          <button type="submit" class="sync-button" {% if not can_sync_calendar %}disabled{% endif %}>Sincronizar con Google Calendar</button>
         </form>
       {% else %}
         <div class="empty-state">

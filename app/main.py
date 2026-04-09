@@ -18,19 +18,23 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
+def _base_context(request: Request) -> dict:
+    can_sync_calendar, calendar_status = GoogleCalendarService().get_status()
+    return {
+        "request": request,
+        "deliveries": [],
+        "error": None,
+        "success": None,
+        "raw_payload": "[]",
+        "default_reminder_days": 5,
+        "can_sync_calendar": can_sync_calendar,
+        "calendar_status": calendar_status,
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "deliveries": [],
-            "error": None,
-            "success": None,
-            "raw_payload": "[]",
-            "default_reminder_days": 5,
-        },
-    )
+    return templates.TemplateResponse("index.html", _base_context(request))
 
 
 @app.get("/health")
@@ -58,7 +62,7 @@ async def analyze_document(
         return templates.TemplateResponse(
             "index.html",
             {
-                "request": request,
+                **_base_context(request),
                 "deliveries": deliveries,
                 "error": None,
                 "success": success,
@@ -70,7 +74,7 @@ async def analyze_document(
         return templates.TemplateResponse(
             "index.html",
             {
-                "request": request,
+                **_base_context(request),
                 "deliveries": [],
                 "error": str(exc),
                 "success": None,
@@ -92,6 +96,9 @@ async def sync_calendar(
     reminder_days_list: Annotated[list[int], Form(...)],
 ):
     try:
+        can_sync_calendar, calendar_status = GoogleCalendarService().get_status()
+        if not can_sync_calendar:
+            raise RuntimeError(calendar_status)
         deliveries = _build_deliveries_from_form(
             subjects=subjects,
             categories=categories,
@@ -105,7 +112,7 @@ async def sync_calendar(
         return templates.TemplateResponse(
             "index.html",
             {
-                "request": request,
+                **_base_context(request),
                 "deliveries": deliveries,
                 "error": None,
                 "success": f"Se crearon {len(created_events)} eventos en Google Calendar.",
@@ -117,7 +124,7 @@ async def sync_calendar(
         return templates.TemplateResponse(
             "index.html",
             {
-                "request": request,
+                **_base_context(request),
                 "deliveries": [],
                 "error": str(exc),
                 "success": None,
