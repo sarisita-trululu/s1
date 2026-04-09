@@ -22,10 +22,14 @@ class GoogleCalendarService:
         credentials_path: str = "credentials.json",
         token_path: str = "token.json",
         calendar_id: str = "primary",
+        service_account_path: str = "service_account.json",
+        config_path: str = "google_calendar_config.json",
     ) -> None:
         self.credentials_path = Path(os.getenv("GOOGLE_CREDENTIALS_PATH", credentials_path))
         self.token_path = Path(os.getenv("GOOGLE_TOKEN_PATH", token_path))
-        self.calendar_id = os.getenv("GOOGLE_CALENDAR_ID", calendar_id)
+        self.service_account_path = Path(service_account_path)
+        self.config_path = Path(config_path)
+        self.calendar_id = self._resolve_calendar_id(calendar_id)
 
     def create_delivery_events(self, deliveries: list[DeliveryItem]) -> list[dict]:
         service = self._build_service()
@@ -37,14 +41,101 @@ class GoogleCalendarService:
 
         return created_events
 
-    def get_status(self) -> tuple[bool, str]:
+    def get_status(self) -> dict:
+        config = self._load_local_config()
+        calendar_id = self.calendar_id
+
         if os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"):
-            return True, "Google Calendar configurado con Service Account."
-        if os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE") and Path(os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")).exists():
-            return True, "Google Calendar configurado con archivo de Service Account."
+            return {
+                "configured": True,
+                "can_sync": True,
+                "needs_oauth": False,
+                "mode": "service_account",
+                "calendar_id": calendar_id,
+                "message": "Google Calendar configurado con Service Account por variable de entorno.",
+            }
+
+        if self.service_account_path.exists():
+            return {
+                "configured": True,
+                "can_sync": True,
+                "needs_oauth": False,
+                "mode": "service_account",
+                "calendar_id": calendar_id,
+                "message": "Google Calendar configurado con Service Account.",
+            }
+
+        if self.credentials_path.exists() and self.token_path.exists():
+            return {
+                "configured": True,
+                "can_sync": True,
+                "needs_oauth": False,
+                "mode": "oauth",
+                "calendar_id": calendar_id,
+                "message": "Google Calendar conectado por OAuth.",
+            }
+
         if self.credentials_path.exists():
-            return True, "Google Calendar listo para autenticacion OAuth."
-        return False, "Falta configurar Google Calendar. Agrega credentials.json o una Service Account."
+            return {
+                "configured": True,
+                "can_sync": True,
+                "needs_oauth": True,
+                "mode": "oauth",
+                "calendar_id": calendar_id,
+                "message": "Credenciales OAuth cargadas. Falta autorizar la cuenta de Google.",
+            }
+
+        return {
+            "configured": False,
+            "can_sync": False,
+            "needs_oauth": False,
+            "mode": config.get("mode", ""),
+            "calendar_id": calendar_id,
+            "message": "Falta configurar Google Calendar. Sube credentials.json o una Service Account desde esta pagina.",
+        }
+
+    def save_credentials_file(self, filename: str, content: bytes, calendar_id: str = "primary") -> str:
+        payload = json.loads(content.decode("utf-8"))
+        calendar_id = calendar_id.strip() or "primary"
+
+        if payload.get("type") == "service_account":
+            self.service_account_path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            if self.credentials_path.exists():
+                self.credentials_path.unlink()
+            self._save_local_config(mode="service_account", calendar_id=calendar_id)
+            return "Se guardo la Service Account de Google Calendar."
+
+        if "installed" in payload or "web" in payload:
+            self.credentials_path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            if self.service_account_path.exists():
+                self.service_account_path.unlink()
+            if self.token_path.exists():
+                self.token_path.unlink()
+            self._save_local_config(mode="oauth", calendar_id=calendar_id)
+            return "Se guardo credentials.json. Ahora autoriza la cuenta de Google."
+
+        raise ValueError("El archivo no parece ser un JSON valido de Google OAuth ni de Service Account.")
+
+    def connect_oauth(self) -> str:
+        if not self.credentials_path.exists():
+            raise FileNotFoundError("Primero sube credentials.json desde la pagina.")
+
+        self._build_service()
+        return "La cuenta de Google Calendar se autorizo correctamente."
+
+    def disconnect(self) -> str:
+        removed = False
+        for path in (self.token_path, self.credentials_path, self.service_account_path, self.config_path):
+            if path.exists():
+                path.unlink()
+                removed = True
+        return "Se elimino la configuracion de Google Calendar." if removed else "No habia configuracion para eliminar."
 
     def _build_service(self):
         service_account_creds = self._load_service_account_credentials()
@@ -60,13 +151,8 @@ class GoogleCalendarService:
                 creds.refresh(Request())
             else:
                 if not self.credentials_path.exists():
-                    raise FileNotFoundError(
-                        "No se encontro credentials.json en la raiz del proyecto."
-                    )
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    str(self.credentials_path),
-                    SCOPES,
-                )
+                    raise FileNotFoundError("No se encontro credentials.json en la raiz del proyecto.")
+                flow = InstalledAppFlow.from_client_secrets_file(str(self.credentials_path), SCOPES)
                 creds = flow.run_local_server(port=0)
 
             self.token_path.write_text(creds.to_json(), encoding="utf-8")
@@ -79,10 +165,13 @@ class GoogleCalendarService:
             info = json.loads(raw_json)
             return service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
 
-        service_account_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE")
-        if service_account_path and Path(service_account_path).exists():
+        service_account_file = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE")
+        if service_account_file and Path(service_account_file).exists():
+            return service_account.Credentials.from_service_account_file(service_account_file, scopes=SCOPES)
+
+        if self.service_account_path.exists():
             return service_account.Credentials.from_service_account_file(
-                service_account_path,
+                str(self.service_account_path),
                 scopes=SCOPES,
             )
 
@@ -102,9 +191,7 @@ class GoogleCalendarService:
             "end": {"date": (due_date + timedelta(days=1)).isoformat()},
             "reminders": {
                 "useDefault": False,
-                "overrides": [
-                    {"method": "popup", "minutes": 60 * 24 * item.reminder_days},
-                ],
+                "overrides": [{"method": "popup", "minutes": 60 * 24 * item.reminder_days}],
             },
         }
         return service.events().insert(calendarId=self.calendar_id, body=event).execute()
@@ -124,3 +211,24 @@ class GoogleCalendarService:
             "reminders": {"useDefault": True},
         }
         return service.events().insert(calendarId=self.calendar_id, body=event).execute()
+
+    def _load_local_config(self) -> dict:
+        if not self.config_path.exists():
+            return {}
+        try:
+            return json.loads(self.config_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return {}
+
+    def _save_local_config(self, mode: str, calendar_id: str) -> None:
+        self.config_path.write_text(
+            json.dumps({"mode": mode, "calendar_id": calendar_id}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    def _resolve_calendar_id(self, fallback: str) -> str:
+        env_calendar_id = os.getenv("GOOGLE_CALENDAR_ID")
+        if env_calendar_id:
+            return env_calendar_id
+        local_config = self._load_local_config()
+        return local_config.get("calendar_id", fallback)

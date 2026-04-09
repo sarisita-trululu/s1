@@ -26,6 +26,41 @@
 
     <section class="panel">
       <div class="message {% if can_sync_calendar %}success{% else %}error{% endif %}">{{ calendar_status }}</div>
+      <div class="google-setup">
+        <h2>Conectar Google Calendar</h2>
+        <p class="setup-copy">
+          Sube tu archivo de Google. Puede ser <strong>credentials.json</strong> para OAuth
+          o un JSON de <strong>Service Account</strong>. Si usas Service Account, comparte tu calendario
+          con el correo de esa cuenta y escribe aquí el ID del calendario.
+        </p>
+        <form action="/google/upload" method="post" enctype="multipart/form-data" class="upload-form">
+          <label for="google_file" class="input-label">Archivo de Google Calendar</label>
+          <input id="google_file" name="google_file" type="file" accept=".json" required>
+          <label for="calendar_id" class="input-label">Calendar ID</label>
+          <input
+            id="calendar_id"
+            name="calendar_id"
+            type="text"
+            value="{{ google_calendar_id }}"
+            class="calendar-input"
+            placeholder="primary o correo-del-calendario@group.calendar.google.com"
+          >
+          <button type="submit">Guardar configuración de Google</button>
+        </form>
+
+        <div class="google-actions">
+          {% if google_needs_oauth %}
+            <form action="/google/connect" method="post">
+              <button type="submit" class="sync-button">Autorizar cuenta de Google</button>
+            </form>
+          {% endif %}
+          {% if google_mode %}
+            <form action="/google/disconnect" method="post">
+              <button type="submit" class="secondary-button">Desconectar Google</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
       <form action="/analyze" method="post" enctype="multipart/form-data" class="upload-form">
         <label for="file" class="input-label">Selecciona tu archivo académico</label>
         <input id="file" name="file" type="file" accept=".pdf,.docx" required>

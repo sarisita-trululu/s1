@@ -19,7 +19,7 @@ templates = Jinja2Templates(directory="templates")
 
 
 def _base_context(request: Request) -> dict:
-    can_sync_calendar, calendar_status = GoogleCalendarService().get_status()
+    google_status = GoogleCalendarService().get_status()
     return {
         "request": request,
         "deliveries": [],
@@ -27,8 +27,11 @@ def _base_context(request: Request) -> dict:
         "success": None,
         "raw_payload": "[]",
         "default_reminder_days": 5,
-        "can_sync_calendar": can_sync_calendar,
-        "calendar_status": calendar_status,
+        "can_sync_calendar": google_status["can_sync"],
+        "calendar_status": google_status["message"],
+        "google_mode": google_status["mode"],
+        "google_needs_oauth": google_status["needs_oauth"],
+        "google_calendar_id": google_status["calendar_id"],
     }
 
 
@@ -96,9 +99,9 @@ async def sync_calendar(
     reminder_days_list: Annotated[list[int], Form(...)],
 ):
     try:
-        can_sync_calendar, calendar_status = GoogleCalendarService().get_status()
-        if not can_sync_calendar:
-            raise RuntimeError(calendar_status)
+        google_status = GoogleCalendarService().get_status()
+        if not google_status["can_sync"]:
+            raise RuntimeError(google_status["message"])
         deliveries = _build_deliveries_from_form(
             subjects=subjects,
             categories=categories,
@@ -133,6 +136,71 @@ async def sync_calendar(
             },
             status_code=400,
         )
+
+
+@app.post("/google/upload", response_class=HTMLResponse)
+async def upload_google_credentials(
+    request: Request,
+    google_file: UploadFile = File(...),
+    calendar_id: str = Form("primary"),
+):
+    try:
+        content = await google_file.read()
+        message = GoogleCalendarService().save_credentials_file(
+            filename=google_file.filename or "google.json",
+            content=content,
+            calendar_id=calendar_id,
+        )
+        return templates.TemplateResponse(
+            "index.html",
+            {
+                **_base_context(request),
+                "success": message,
+            },
+        )
+    except Exception as exc:
+        return templates.TemplateResponse(
+            "index.html",
+            {
+                **_base_context(request),
+                "error": str(exc),
+            },
+            status_code=400,
+        )
+
+
+@app.post("/google/connect", response_class=HTMLResponse)
+async def connect_google_calendar(request: Request):
+    try:
+        message = GoogleCalendarService().connect_oauth()
+        return templates.TemplateResponse(
+            "index.html",
+            {
+                **_base_context(request),
+                "success": message,
+            },
+        )
+    except Exception as exc:
+        return templates.TemplateResponse(
+            "index.html",
+            {
+                **_base_context(request),
+                "error": str(exc),
+            },
+            status_code=400,
+        )
+
+
+@app.post("/google/disconnect", response_class=HTMLResponse)
+async def disconnect_google_calendar(request: Request):
+    message = GoogleCalendarService().disconnect()
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            **_base_context(request),
+            "success": message,
+        },
+    )
 
 
 def _apply_reminder_days(item: DeliveryItem, reminder_days: int) -> DeliveryItem:
