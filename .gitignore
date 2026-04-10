@@ -11,6 +11,8 @@ token.json
 credentials.json
 *.tmp
 tools/
+local_calendar_events.json
+users.json
 node_modules/
 dist/
 build/

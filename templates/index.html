@@ -18,6 +18,10 @@
   <div class="cursor-glow" id="cursor-glow"></div>
 
   <main class="page">
+    <form action="/logout" method="post" class="logout-form">
+      <span class="user-chip">Usuario: {{ current_user }}</span>
+      <button type="submit" class="secondary-button">Cerrar sesion</button>
+    </form>
     <section class="hero">
       <div class="hero-copy">
         <p class="eyebrow">PDF + Word + Calendario Propio</p>

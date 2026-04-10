@@ -13,6 +13,7 @@ from .models import DeliveryItem
 @dataclass
 class CalendarEvent:
     id: str
+    owner: str
     event_date_iso: str
     title: str
     subject: str
@@ -28,10 +29,10 @@ class LocalCalendarService:
     def __init__(self, storage_path: str = "local_calendar_events.json") -> None:
         self.storage_path = Path(storage_path)
 
-    def add_delivery_items(self, deliveries: list[DeliveryItem]) -> int:
+    def add_delivery_items(self, owner: str, deliveries: list[DeliveryItem]) -> int:
         events = self._load_events()
         existing_keys = {
-            (event.event_date_iso, event.title.lower(), event.event_type.lower())
+            (event.owner, event.event_date_iso, event.title.lower(), event.event_type.lower())
             for event in events
         }
         created = 0
@@ -39,6 +40,7 @@ class LocalCalendarService:
         for item in deliveries:
             due_event = CalendarEvent(
                 id=str(uuid.uuid4()),
+                owner=owner,
                 event_date_iso=item.due_date_iso,
                 title=item.title,
                 subject=item.subject,
@@ -48,6 +50,7 @@ class LocalCalendarService:
             )
             reminder_event = CalendarEvent(
                 id=str(uuid.uuid4()),
+                owner=owner,
                 event_date_iso=item.reminder_date_iso,
                 title=f"Preparar: {item.title}",
                 subject=item.subject,
@@ -57,7 +60,7 @@ class LocalCalendarService:
             )
 
             for event in (due_event, reminder_event):
-                key = (event.event_date_iso, event.title.lower(), event.event_type.lower())
+                key = (event.owner, event.event_date_iso, event.title.lower(), event.event_type.lower())
                 if key in existing_keys:
                     continue
                 existing_keys.add(key)
@@ -67,11 +70,11 @@ class LocalCalendarService:
         self._save_events(events)
         return created
 
-    def get_month_view(self, year: int, month: int) -> dict:
+    def get_month_view(self, owner: str, year: int, month: int) -> dict:
         events = self._load_events()
         events_by_day: dict[str, list[CalendarEvent]] = {}
         for event in events:
-            if event.event_date_iso.startswith(f"{year:04d}-{month:02d}-"):
+            if event.owner == owner and event.event_date_iso.startswith(f"{year:04d}-{month:02d}-"):
                 events_by_day.setdefault(event.event_date_iso, []).append(event)
 
         weeks = []
@@ -96,7 +99,7 @@ class LocalCalendarService:
             weeks.append(days)
 
         upcoming_events = sorted(
-            [event.to_dict() for event in events],
+            [event.to_dict() for event in events if event.owner == owner],
             key=lambda event: (event["event_date_iso"], event["event_type"], event["title"]),
         )[:30]
 
@@ -115,8 +118,9 @@ class LocalCalendarService:
             "next_month": next_month,
         }
 
-    def clear_all(self) -> None:
-        self._save_events([])
+    def clear_all(self, owner: str) -> None:
+        events = [event for event in self._load_events() if event.owner != owner]
+        self._save_events(events)
 
     def _load_events(self) -> list[CalendarEvent]:
         if not self.storage_path.exists():
@@ -125,7 +129,11 @@ class LocalCalendarService:
             raw = json.loads(self.storage_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             return []
-        return [CalendarEvent(**item) for item in raw]
+        normalized = []
+        for item in raw:
+            item.setdefault("owner", "__legacy__")
+            normalized.append(CalendarEvent(**item))
+        return normalized
 
     def _save_events(self, events: list[CalendarEvent]) -> None:
         payload = [event.to_dict() for event in events]

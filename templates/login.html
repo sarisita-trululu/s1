@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ingreso</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="brain-background" aria-hidden="true">
+    <span class="brain-symbol">Ψ</span>
+    <span class="brain-symbol">Ψ</span>
+    <span class="brain-symbol">Ψ</span>
+    <span class="brain-symbol">Ψ</span>
+    <span class="brain-symbol">Ψ</span>
+    <span class="brain-symbol">Ψ</span>
+  </div>
+  <div class="cursor-glow" id="cursor-glow"></div>
+
+  <main class="page auth-page">
+    <section class="auth-card">
+      <p class="eyebrow">Calendario Academico</p>
+      <h1>Ingresa a tu espacio</h1>
+      <p class="lead">Crea una cuenta o inicia sesion para guardar tu calendario academico personal.</p>
+
+      {% if error %}
+        <div class="message error">{{ error }}</div>
+      {% endif %}
+
+      {% if success %}
+        <div class="message success">{{ success }}</div>
+      {% endif %}
+
+      <div class="auth-grid">
+        <form action="/login" method="post" class="auth-form">
+          <h2>Iniciar sesion</h2>
+          <label class="input-label" for="login-username">Usuario</label>
+          <input id="login-username" name="username" type="text" class="calendar-input" required>
+          <label class="input-label" for="login-password">Contraseña</label>
+          <input id="login-password" name="password" type="password" class="calendar-input" required>
+          <button type="submit">Entrar</button>
+        </form>
+
+        <form action="/register" method="post" class="auth-form">
+          <h2>Crear cuenta</h2>
+          <label class="input-label" for="register-username">Usuario</label>
+          <input id="register-username" name="username" type="text" class="calendar-input" required>
+          <label class="input-label" for="register-password">Contraseña</label>
+          <input id="register-password" name="password" type="password" class="calendar-input" required>
+          <button type="submit">Crear cuenta</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const cursorGlow = document.getElementById("cursor-glow");
+    window.addEventListener("pointermove", (event) => {
+      cursorGlow.style.transform = `translate(${event.clientX - 90}px, ${event.clientY - 90}px)`;
+    });
+  </script>
+</body>
+</html>

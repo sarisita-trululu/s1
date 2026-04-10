@@ -8,23 +8,34 @@ from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 
+from .auth import AuthService
 from .document_parser import analyze_document as analyze_uploaded_document
 from .local_calendar import LocalCalendarService
 from .models import DeliveryItem
 
 app = FastAPI(title="Organizador de Entregas")
+app.add_middleware(SessionMiddleware, secret_key="calendario-academico-seguro")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+
+def _current_user(request: Request) -> str | None:
+    user = request.session.get("user")
+    return str(user) if user else None
 
 
 def _base_context(request: Request, year: int | None = None, month: int | None = None) -> dict:
     today = date.today()
     year = year or today.year
     month = month or today.month
-    calendar_data = LocalCalendarService().get_month_view(year, month)
+    current_user = _current_user(request)
+    calendar_data = LocalCalendarService().get_month_view(current_user or "__guest__", year, month)
     return {
         "request": request,
+        "current_user": current_user,
+        "is_authenticated": bool(current_user),
         "deliveries": [],
         "error": None,
         "success": None,
@@ -36,6 +47,15 @@ def _base_context(request: Request, year: int | None = None, month: int | None =
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, year: int | None = None, month: int | None = None):
+    if not _current_user(request):
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "error": None,
+                "success": None,
+            },
+        )
     return templates.TemplateResponse("index.html", _base_context(request, year=year, month=month))
 
 
@@ -50,6 +70,12 @@ async def analyze_document(
     file: UploadFile = File(...),
     reminder_days: int = Form(5),
 ):
+    if not _current_user(request):
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Debes iniciar sesion para usar la aplicacion.", "success": None},
+            status_code=401,
+        )
     try:
         content = await file.read()
         reminder_days = max(0, reminder_days)
@@ -93,6 +119,13 @@ async def sync_calendar(
     source_lines: Annotated[list[str], Form(...)],
     reminder_days_list: Annotated[list[int], Form(...)],
 ):
+    current_user = _current_user(request)
+    if not current_user:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Debes iniciar sesion para guardar eventos.", "success": None},
+            status_code=401,
+        )
     try:
         deliveries = _build_deliveries_from_form(
             subjects=subjects,
@@ -102,7 +135,7 @@ async def sync_calendar(
             source_lines=source_lines,
             reminder_days_list=reminder_days_list,
         )
-        created_events = LocalCalendarService().add_delivery_items(deliveries)
+        created_events = LocalCalendarService().add_delivery_items(current_user, deliveries)
         return templates.TemplateResponse(
             "index.html",
             {
@@ -125,12 +158,87 @@ async def sync_calendar(
 
 @app.post("/calendar/clear", response_class=HTMLResponse)
 async def clear_local_calendar(request: Request):
-    LocalCalendarService().clear_all()
+    current_user = _current_user(request)
+    if not current_user:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Debes iniciar sesion para limpiar el calendario.", "success": None},
+            status_code=401,
+        )
+    LocalCalendarService().clear_all(current_user)
     return templates.TemplateResponse(
         "index.html",
         {
             **_base_context(request),
             "success": "Se limpiaron todos los eventos del calendario propio.",
+        },
+    )
+
+
+@app.post("/register", response_class=HTMLResponse)
+async def register(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    try:
+        AuthService().register_user(username, password)
+        request.session["user"] = username.strip().lower()
+        return templates.TemplateResponse(
+            "index.html",
+            {
+                **_base_context(request),
+                "success": "Cuenta creada correctamente.",
+            },
+        )
+    except Exception as exc:
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "error": str(exc),
+                "success": None,
+            },
+            status_code=400,
+        )
+
+
+@app.post("/login", response_class=HTMLResponse)
+async def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    if not AuthService().authenticate(username, password):
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "error": "Usuario o contraseña incorrectos.",
+                "success": None,
+            },
+            status_code=401,
+        )
+
+    request.session["user"] = username.strip().lower()
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            **_base_context(request),
+            "success": "Sesion iniciada correctamente.",
+        },
+    )
+
+
+@app.post("/logout", response_class=HTMLResponse)
+async def logout(request: Request):
+    request.session.clear()
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "error": None,
+            "success": "Sesion cerrada.",
         },
     )
 
