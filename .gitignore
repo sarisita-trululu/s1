@@ -13,6 +13,7 @@ credentials.json
 tools/
 local_calendar_events.json
 users.json
+data/
 node_modules/
 dist/
 build/

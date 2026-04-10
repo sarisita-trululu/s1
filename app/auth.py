@@ -5,10 +5,12 @@ import hmac
 import json
 from pathlib import Path
 
+from .paths import data_path
+
 
 class AuthService:
-    def __init__(self, storage_path: str = "users.json") -> None:
-        self.storage_path = Path(storage_path)
+    def __init__(self, storage_path: str | Path | None = None) -> None:
+        self.storage_path = Path(storage_path) if storage_path else data_path("users.json")
 
     def register_user(self, username: str, password: str) -> None:
         username = username.strip().lower()

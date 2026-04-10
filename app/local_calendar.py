@@ -8,6 +8,7 @@ from datetime import date
 from pathlib import Path
 
 from .models import DeliveryItem
+from .paths import data_path
 
 
 @dataclass
@@ -26,8 +27,8 @@ class CalendarEvent:
 
 
 class LocalCalendarService:
-    def __init__(self, storage_path: str = "local_calendar_events.json") -> None:
-        self.storage_path = Path(storage_path)
+    def __init__(self, storage_path: str | Path | None = None) -> None:
+        self.storage_path = Path(storage_path) if storage_path else data_path("local_calendar_events.json")
 
     def add_delivery_items(self, owner: str, deliveries: list[DeliveryItem]) -> int:
         events = self._load_events()

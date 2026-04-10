@@ -12,6 +12,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from .models import DeliveryItem
+from .paths import data_path
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
@@ -19,16 +20,21 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 class GoogleCalendarService:
     def __init__(
         self,
-        credentials_path: str = "credentials.json",
-        token_path: str = "token.json",
+        credentials_path: str | Path | None = None,
+        token_path: str | Path | None = None,
         calendar_id: str = "primary",
-        service_account_path: str = "service_account.json",
-        config_path: str = "google_calendar_config.json",
+        service_account_path: str | Path | None = None,
+        config_path: str | Path | None = None,
     ) -> None:
-        self.credentials_path = Path(os.getenv("GOOGLE_CREDENTIALS_PATH", credentials_path))
-        self.token_path = Path(os.getenv("GOOGLE_TOKEN_PATH", token_path))
-        self.service_account_path = Path(service_account_path)
-        self.config_path = Path(config_path)
+        default_credentials = credentials_path or data_path("credentials.json")
+        default_token = token_path or data_path("token.json")
+        default_service_account = service_account_path or data_path("service_account.json")
+        default_config = config_path or data_path("google_calendar_config.json")
+
+        self.credentials_path = Path(os.getenv("GOOGLE_CREDENTIALS_PATH", str(default_credentials)))
+        self.token_path = Path(os.getenv("GOOGLE_TOKEN_PATH", str(default_token)))
+        self.service_account_path = Path(default_service_account)
+        self.config_path = Path(default_config)
         self.calendar_id = self._resolve_calendar_id(calendar_id)
 
     def create_delivery_events(self, deliveries: list[DeliveryItem]) -> list[dict]:
@@ -151,7 +157,7 @@ class GoogleCalendarService:
                 creds.refresh(Request())
             else:
                 if not self.credentials_path.exists():
-                    raise FileNotFoundError("No se encontro credentials.json en la raiz del proyecto.")
+                    raise FileNotFoundError("No se encontro credentials.json en la carpeta de datos de la aplicacion.")
                 flow = InstalledAppFlow.from_client_secrets_file(str(self.credentials_path), SCOPES)
                 creds = flow.run_local_server(port=0)
 

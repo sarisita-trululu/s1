@@ -1,121 +1,67 @@
-# s1
+# Organizadorcitotrululu
 
-App para estudiantes de USB.
+Aplicacion web en FastAPI para leer planes de curso en `.docx` o `.pdf`, detectar lecturas y actividades con fecha, y organizarlas dentro de un calendario mensual editable.
 
-## Organizador de Entregas a Google Calendar
+## Archivos listos para despliegue
 
-Aplicacion web en Python que:
+- `requirements.txt`
+- `Procfile`
+- `render.yaml`
+- `railway.json`
+- `run.py`
 
-- Lee archivos `.docx` y `.pdf`
-- Extrae fechas y tareas de entrega
-- Muestra los resultados para revision
-- Crea eventos en Google Calendar
-- Genera un recordatorio con dias de anticipacion configurables
+## Variables de entorno
 
-## Requisitos
+- `PORT`: puerto publico del servicio. Si no existe, usa `5000`.
+- `HOST`: por defecto `0.0.0.0`.
+- `SESSION_SECRET`: clave de sesion para produccion.
+- `APP_DATA_DIR`: carpeta donde se guardan `users.json`, eventos y configuraciones.
+- `GOOGLE_SERVICE_ACCOUNT_JSON`: opcional si luego quieres reactivar Google Calendar.
+- `GOOGLE_CALENDAR_ID`: opcional para Google Calendar.
 
-- Python 3.14 o compatible
-- Una cuenta de Google
-- Credenciales OAuth de Google Calendar
-
-## Configuracion
-
-1. Crea y activa un entorno virtual:
+## Ejecutar local
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-```
-
-2. Instala dependencias:
-
-```powershell
 pip install -r requirements.txt
-```
-
-3. Crea credenciales OAuth en Google Cloud:
-
-- Entra a Google Cloud Console
-- Activa la API de Google Calendar
-- Crea un `OAuth Client ID` para aplicacion de escritorio
-- Descarga el archivo JSON y guardalo como `credentials.json` en la raiz del proyecto
-
-## Ejecutar
-
-```powershell
 python run.py
 ```
 
-Luego abre:
+## Deploy en Render
 
-```text
-http://127.0.0.1:8000
-```
+1. Sube este proyecto a GitHub.
+2. Entra a [Render](https://render.com/) y pulsa `New +`.
+3. Elige `Blueprint` o `Web Service`.
+4. Conecta el repositorio.
+5. Render detectara `render.yaml`.
+6. En `Environment`, define:
+   - `SESSION_SECRET` con un valor largo y privado.
+   - `APP_DATA_DIR` con `/tmp/organizador-data` o la ruta de tu disco persistente.
+7. Pulsa `Create Web Service`.
+8. Cuando termine, Render te dara una URL publica tipo:
+   - `https://tu-app.onrender.com`
 
-Para acceso desde otros equipos en la misma red, usa la IP local de este computador en el puerto `8000`.
+## Deploy en Railway
 
-## Despliegue en Render
+1. Entra a [Railway](https://railway.com/).
+2. Crea un proyecto nuevo con `Deploy from GitHub repo`.
+3. Selecciona este repositorio.
+4. Railway leera `railway.json`.
+5. En `Variables`, agrega:
+   - `SESSION_SECRET`
+   - `APP_DATA_DIR=/data` si vas a usar volumen persistente
+6. En `Settings` -> `Networking`, pulsa `Generate Domain`.
+7. Railway te dara una URL publica tipo:
+   - `https://tu-app.up.railway.app`
 
-La app quedo preparada con `render.yaml`.
+## Persistencia recomendada
 
-Pasos:
+- Render: monta un disco persistente y apunta `APP_DATA_DIR` a esa ruta.
+- Railway: crea un volumen y apunta `APP_DATA_DIR=/data`.
 
-1. Sube este proyecto a un repositorio de GitHub.
-2. En Render, crea un nuevo servicio usando ese repositorio o usa la opcion de Blueprint.
-3. Render usara:
-   - build command: `pip install -r requirements.txt`
-   - start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-4. Configura la variable de entorno `GOOGLE_CALENDAR_ID` si quieres usar un calendario especifico.
+## Verificacion rapida
 
-### Opcion recomendada para produccion: Service Account
-
-Para un despliegue estable en Render, la forma mas simple es usar una cuenta de servicio de Google:
-
-1. Crea una Service Account en Google Cloud.
-2. Habilita Google Calendar API.
-3. Descarga la clave JSON.
-4. En Render, agrega una variable secreta `GOOGLE_SERVICE_ACCOUNT_JSON` con el contenido completo del JSON en una sola variable.
-5. Comparte el calendario de Google con el correo de la cuenta de servicio.
-6. Opcionalmente define `GOOGLE_CALENDAR_ID` con el ID del calendario compartido.
-
-### Limitacion actual
-
-La app ya puede desplegarse publicamente, pero la sincronizacion con el calendario en Render esta pensada para:
-
-- un calendario compartido del proyecto, usando Service Account
-- o uso local con `credentials.json`
-
-Si quieres que cada usuario que entre a la web conecte su propio Google Calendar, hay que implementar OAuth web multiusuario.
-
-## Como funciona
-
-1. Subes un PDF o Word.
-2. La app extrae texto del documento.
-3. Detecta lineas con tareas y fechas.
-4. Te muestra una lista para revision.
-5. Al sincronizar:
-   - crea un evento el dia de entrega
-   - crea un evento de preparacion con los dias de anticipacion elegidos
-   - anade un recordatorio emergente
-
-## Formatos que detecta mejor
-
-Ejemplos de frases:
-
-- `Entregar caso clinico el 10 de abril`
-- `Exposicion final - 22/05/2026`
-- `Taller de farmacologia para entregar el 3 de junio`
-- `Fecha limite: 14-04-2026 informe de laboratorio`
-
-## Archivos importantes
-
-- `app/main.py`: servidor FastAPI
-- `app/document_parser.py`: lectura y extraccion de tareas
-- `app/google_calendar.py`: autenticacion y creacion de eventos
-- `templates/index.html`: interfaz web
-
-## Notas
-
-- Esta version trabaja mejor con archivos Word `.docx`, no con `.doc` antiguos.
-- Si el documento tiene fechas muy ambiguas, la app intentara inferir el ano actual.
-- La primera vez que sincronices con Google se abrira el flujo de autorizacion OAuth.
+- `GET /health` debe responder `{"status":"ok"}`
+- La app debe abrir desde cualquier dispositivo con la URL publica del proveedor.
+- Los archivos subidos se procesan en memoria; no dependen de rutas locales del computador.

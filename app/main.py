@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import os
 import secrets
 from datetime import date, datetime, timedelta
 from typing import Annotated
@@ -13,11 +15,14 @@ from .auth import AuthService
 from .document_parser import analyze_document as analyze_uploaded_document
 from .local_calendar import LocalCalendarService
 from .models import DeliveryItem
+from .paths import STATIC_DIR, TEMPLATES_DIR
 
-app = FastAPI(title="Organizador de Entregas")
-app.add_middleware(SessionMiddleware, secret_key="calendario-academico-seguro")
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "organizadorcitotrululu-dev-secret")
+
+app = FastAPI(title="Organizadorcitotrululu")
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 GUEST_PREFIX = "__guest__:"
 
 
