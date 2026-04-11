@@ -237,9 +237,26 @@
     </section>
   </main>
 
+  <aside class="promo-banner" id="sara-banner" aria-label="Promocion personal">
+    <button type="button" class="promo-close" id="promo-close" aria-label="Cerrar banner">×</button>
+    <div class="promo-shine" aria-hidden="true"></div>
+    <p class="promo-kicker">Edicion premium</p>
+    <h3>💙 Vota Sara Garcia</h3>
+    <p class="promo-subtitle">Sarita de repre ✨</p>
+    <p class="promo-copy">
+      La creadora de esta pagina 😉
+      <span>(Sarita Trululu quiere que votes por ella en su candidatura de representante)</span>
+    </p>
+    <button type="button" class="promo-cta">Apoyar 💙</button>
+    <p class="promo-disclaimer">El uso de esta pagina no implica apoyo politico obligatorio</p>
+  </aside>
+
   <script>
     const cursorGlow = document.getElementById("cursor-glow");
     const parallaxItems = document.querySelectorAll(".parallax-item");
+    const promoBanner = document.getElementById("sara-banner");
+    const promoClose = document.getElementById("promo-close");
+    const promoStorageKey = "organizadorcitotrululu-promo-dismissed";
 
     window.addEventListener("pointermove", (event) => {
       const x = event.clientX;
@@ -261,6 +278,28 @@
       parallaxItems.forEach((item) => {
         item.style.transform = "translate3d(0, 0, 0)";
       });
+    });
+
+    try {
+      if (window.localStorage.getItem(promoStorageKey) === "1") {
+        promoBanner.classList.add("is-hidden");
+      }
+    } catch (error) {
+      console.debug("No se pudo leer el estado del banner", error);
+    }
+
+    promoClose?.addEventListener("click", () => {
+      promoBanner.classList.add("is-closing");
+      try {
+        window.localStorage.setItem(promoStorageKey, "1");
+      } catch (error) {
+        console.debug("No se pudo guardar el estado del banner", error);
+      }
+
+      window.setTimeout(() => {
+        promoBanner.classList.add("is-hidden");
+        promoBanner.classList.remove("is-closing");
+      }, 260);
     });
   </script>
 </body>
