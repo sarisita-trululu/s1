@@ -1,0 +1,21 @@
+:root {
+  color-scheme: light;
+}
+
+body {
+  background:
+    linear-gradient(180deg, rgba(251, 248, 241, 0.98) 0%, rgba(245, 241, 232, 0.92) 34%, rgba(238, 245, 239, 0.98) 100%);
+}
+
+body::-webkit-scrollbar {
+  width: 10px;
+}
+
+body::-webkit-scrollbar-track {
+  background: rgba(245, 241, 232, 0.9);
+}
+
+body::-webkit-scrollbar-thumb {
+  background: rgba(47, 93, 80, 0.35);
+  border-radius: 999px;
+}

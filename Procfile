@@ -1,1 +1,1 @@
-web: python run.py
+web: alembic upgrade head && python run.py

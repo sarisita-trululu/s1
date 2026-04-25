@@ -1,0 +1,20 @@
+<svg width="720" height="720" viewBox="0 0 720 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="720" height="720" rx="160" fill="#FFFDF8"/>
+  <rect width="720" height="720" rx="160" fill="url(#paint0_radial)"/>
+  <circle cx="360" cy="274" r="118" fill="#F5F1E8"/>
+  <path d="M240 570C250 471 303 416 360 416C417 416 470 471 480 570H240Z" fill="#A3BFA8"/>
+  <path d="M304 292C313 250 337 214 360 214C383 214 407 250 416 292C405 331 386 358 360 358C334 358 315 331 304 292Z" fill="#D8C7A3"/>
+  <path d="M290 258C300 198 333 164 360 164C387 164 420 198 430 258C409 235 382 224 360 224C338 224 311 235 290 258Z" fill="#2F5D50"/>
+  <path d="M174 154C208 172 236 207 244 248C207 238 176 208 165 176C160 160 160 147 174 154Z" fill="#A3BFA8" fill-opacity="0.9"/>
+  <path d="M522 120C564 143 597 188 606 240C560 228 523 189 512 150C507 133 507 118 522 120Z" fill="#D9E4D7" fill-opacity="0.9"/>
+  <path d="M540 498C566 512 587 541 593 577C564 570 540 543 533 518C530 506 530 496 540 498Z" fill="#A3BFA8"/>
+  <path d="M128 470C157 485 180 518 186 557C154 548 127 519 120 491C117 479 117 468 128 470Z" fill="#D9E4D7"/>
+  <text x="360" y="640" text-anchor="middle" fill="#2F5D50" font-family="Georgia, serif" font-size="28">Retrato profesional</text>
+  <defs>
+    <radialGradient id="paint0_radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(360 120) rotate(90) scale(620)">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="0.55" stop-color="#F8F4EC"/>
+      <stop offset="1" stop-color="#E6EFE7"/>
+    </radialGradient>
+  </defs>
+</svg>

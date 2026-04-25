@@ -1,0 +1,44 @@
+@import "../styles/theme.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-forest/10;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-dawn text-pine;
+  }
+
+  a {
+    @apply transition-colors duration-300;
+  }
+
+  ::selection {
+    @apply bg-forest text-white;
+  }
+}
+
+@layer components {
+  .page-section {
+    @apply mx-auto w-full max-w-7xl px-5 py-16 md:px-8 md:py-24;
+  }
+
+  .soft-panel {
+    @apply rounded-[2rem] border border-white/50 bg-white/75 shadow-card backdrop-blur-xl;
+  }
+
+  .grain-overlay {
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.8), transparent 35%),
+      radial-gradient(circle at 80% 30%, rgba(163, 191, 168, 0.22), transparent 30%),
+      radial-gradient(circle at 50% 100%, rgba(47, 93, 80, 0.12), transparent 35%);
+  }
+}
